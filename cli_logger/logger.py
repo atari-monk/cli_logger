@@ -7,15 +7,15 @@ from typing import Any, Optional
 from logging.handlers import RotatingFileHandler
 
 class LoggerConfig(Enum):
-    LOG_TO_FILE_FLAG = 1
-    LOG_FILE_PATH = 2
-    MAIN_LEVEL = 3
-    CONSOLE_LEVEL = 4
+    MAIN_LEVEL = 1
+    CONSOLE_LEVEL = 2
+    FORMAT = 3
+    LOG_TO_FILE_FLAG = 4
     FILE_LEVEL = 5
-    FORMAT = 6
-    MAX_BYTES = 7
-    BACKUP_COUNT = 8
-    USE_ROTATING_HANDLER = 9
+    LOG_FILE_PATH = 6
+    USE_ROTATING_FILE = 7
+    MAX_BYTES = 8
+    BACKUP_COUNT = 9
 
 _logger_cache = {}
 
@@ -52,6 +52,7 @@ def get_default_config() -> dict[LoggerConfig, Any]:
         LoggerConfig.FORMAT: '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
         LoggerConfig.MAX_BYTES: 10 * 1024 * 1024,
         LoggerConfig.BACKUP_COUNT: 3,
+        LoggerConfig.USE_ROTATING_FILE: True
     }
 
 def validate_config(config: dict[LoggerConfig, Any]) -> None:
@@ -73,7 +74,7 @@ def add_file_handler(logger: logging.Logger, formatter: logging.Formatter, confi
     ensure_log_directory_exists(log_dir)
 
     try:
-        if config.get(LoggerConfig.USE_ROTATING_HANDLER, False):
+        if config[LoggerConfig.USE_ROTATING_FILE]:
             file_handler = setup_rotating_file_handler(config)
         else:
             file_handler = setup_standard_file_handler(config)
