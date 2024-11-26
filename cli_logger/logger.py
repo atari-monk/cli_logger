@@ -20,8 +20,9 @@ class LoggerConfig(Enum):
 _logger_cache = {}
 
 def setup_logger(name: str, config: Optional[dict[LoggerConfig, Any]] = None) -> logging.Logger:
-    if name in _logger_cache:
-        return _logger_cache[name]
+    logger = get_cached_logger(name)
+    if logger:
+        return logger
 
     default_config = get_default_config()
     config = {**default_config, **(config or {})}
@@ -32,12 +33,12 @@ def setup_logger(name: str, config: Optional[dict[LoggerConfig, Any]] = None) ->
     logger.setLevel(config[LoggerConfig.MAIN_LEVEL])
 
     if not logger.handlers:
-        formatter = logging.Formatter(config[LoggerConfig.FORMAT])
+        formatter = create_formatter(config[LoggerConfig.FORMAT])
         add_console_handler(logger, formatter, config)
         if config[LoggerConfig.LOG_TO_FILE_FLAG]:
             add_file_handler(logger, formatter, config)
 
-        _logger_cache[name] = logger
+        cache_logger(name, logger)
         
     return logger
 
@@ -69,22 +70,37 @@ def add_file_handler(logger: logging.Logger, formatter: logging.Formatter, confi
     log_file = config[LoggerConfig.LOG_FILE_PATH]
     log_dir = os.path.dirname(log_file)
 
-    if log_dir:
-        try:
-            os.makedirs(log_dir, exist_ok=True)
-        except OSError as e:
-            logger.error(f"Failed to create log directory '{log_dir}': {e}")
-            raise
+    ensure_log_directory_exists(log_dir)
 
     try:
-        file_handler = RotatingFileHandler(
-            log_file,
-            maxBytes=config[LoggerConfig.MAX_BYTES],
-            backupCount=config[LoggerConfig.BACKUP_COUNT]
-        )
+        file_handler = setup_rotating_file_handler(config)
         file_handler.setLevel(config[LoggerConfig.FILE_LEVEL])
         file_handler.setFormatter(formatter)
         logger.addHandler(file_handler)
     except Exception as e:
         logger.error(f"Failed to set up file handler for log file '{log_file}': {e}")
         raise
+
+def ensure_log_directory_exists(log_dir: str) -> None:
+    if log_dir:
+        try:
+            os.makedirs(log_dir, exist_ok=True)
+        except OSError as e:
+            raise RuntimeError(f"Failed to create log directory '{log_dir}': {e}")
+
+def create_formatter(format_string: str) -> logging.Formatter:
+    return logging.Formatter(format_string)
+
+def setup_rotating_file_handler(config: dict[LoggerConfig, Any]) -> RotatingFileHandler:
+    log_file = config[LoggerConfig.LOG_FILE_PATH]
+    return RotatingFileHandler(
+        log_file,
+        maxBytes=config[LoggerConfig.MAX_BYTES],
+        backupCount=config[LoggerConfig.BACKUP_COUNT]
+    )
+
+def get_cached_logger(name: str) -> Optional[logging.Logger]:
+    return _logger_cache.get(name)
+
+def cache_logger(name: str, logger: logging.Logger) -> None:
+    _logger_cache[name] = logger
