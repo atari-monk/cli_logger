@@ -73,13 +73,28 @@ def add_file_handler(logger: logging.Logger, formatter: logging.Formatter, confi
     ensure_log_directory_exists(log_dir)
 
     try:
-        file_handler = setup_rotating_file_handler(config)
+        if config.get(LoggerConfig.USE_ROTATING_HANDLER, False):
+            file_handler = setup_rotating_file_handler(config)
+        else:
+            file_handler = setup_standard_file_handler(config)
         file_handler.setLevel(config[LoggerConfig.FILE_LEVEL])
         file_handler.setFormatter(formatter)
         logger.addHandler(file_handler)
     except Exception as e:
         logger.error(f"Failed to set up file handler for log file '{log_file}': {e}")
         raise
+
+def setup_rotating_file_handler(config: dict[LoggerConfig, Any]) -> RotatingFileHandler:
+    log_file = config[LoggerConfig.LOG_FILE_PATH]
+    return RotatingFileHandler(
+        log_file,
+        maxBytes=config[LoggerConfig.MAX_BYTES],
+        backupCount=config[LoggerConfig.BACKUP_COUNT]
+    )
+
+def setup_standard_file_handler(config: dict[LoggerConfig, Any]) -> logging.FileHandler:
+    log_file = config[LoggerConfig.LOG_FILE_PATH]
+    return logging.FileHandler(log_file)
 
 def ensure_log_directory_exists(log_dir: str) -> None:
     if log_dir:
@@ -90,14 +105,6 @@ def ensure_log_directory_exists(log_dir: str) -> None:
 
 def create_formatter(format_string: str) -> logging.Formatter:
     return logging.Formatter(format_string)
-
-def setup_rotating_file_handler(config: dict[LoggerConfig, Any]) -> RotatingFileHandler:
-    log_file = config[LoggerConfig.LOG_FILE_PATH]
-    return RotatingFileHandler(
-        log_file,
-        maxBytes=config[LoggerConfig.MAX_BYTES],
-        backupCount=config[LoggerConfig.BACKUP_COUNT]
-    )
 
 def get_cached_logger(name: str) -> Optional[logging.Logger]:
     return _logger_cache.get(name)
