@@ -1,2 +1,4 @@
 build
 cli_logger.egg-info
+logs
+__pycache__
