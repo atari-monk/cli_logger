@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 
 setup(
-    name="cli_logger",
+    name="atari_monk_cli_logger",
     version="0.1.0",
     packages=find_packages(),
     entry_points={},
